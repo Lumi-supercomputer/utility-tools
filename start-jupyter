@@ -1,0 +1,122 @@
+#!/bin/bash
+# Exit on error
+set -e
+# Exit on undefined variable
+set -u
+
+# Check that jupyter exists
+type jupyter &>/dev/null || {  echo "No jupyter found" ; exit 1  ;}
+
+# By default start notebook not lab
+start_cmd=notebook
+list_cmd=notebook
+
+## Argument parsing
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+  key="$1"
+  case $key in
+    --debug)
+      keep_log_file=1
+      shift # past argument
+      ;;
+    --lab)
+      start_cmd=lab
+      list_cmd=server
+      type jupyter-lab &>/dev/null || {  echo "No jupyter lab found" ; exit 1  ;}
+      echo "Selected jupyter lab"
+      shift
+      ;;
+    --help|-h)
+      echo -e "Usage: start-jupyter [OPTIONS]
+Tool to start jupyter and print out connection information.
+The jupyter executable is selected from the users PATH variable
+
+Options:
+    -h, --help      Show this message and exit
+
+    --debug         Save jupyter output to a file 
+
+    --lab           Start Jupyterlab instead
+" 
+      exit 0
+      ;;
+    *)    # unknown option
+      POSITIONAL+=("$1") # save it in an array for later
+      shift # past argument
+      ;;
+  esac
+done
+
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+# Allow running on login node for now
+if [[ ${SLURM_JOB_ID+defined} ]];then
+    id=$SLURM_JOB_ID
+else
+    id=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8 ; echo '')
+fi
+
+
+
+
+
+
+
+
+# Start notebook in current dir
+# Don't try to open a browser
+# Accept other than localhost connection as we might
+# be connecting to a compute node from a login node
+# If ssh to compute nodes is enabled
+# The forwarding command can be changed and 
+# only localhost connections allowed
+settings="--notebook-dir=$PWD --no-browser --ip=* "
+
+if [[ "${keep_log_file+defined}"  ]];then
+    echo "Jupyter log output can be found in $(pwd)/jupyter.$id.out"
+    jupyter $start_cmd $settings  &> jupyter.$id.out &
+else
+    jupyter $start_cmd $settings  &> /dev/null &
+fi
+
+pid=$!
+trap "kill -9 ${pid}; exit 0" INT
+trap "kill -9 ${pid}; exit 0 " EXIT
+
+# find url with token and port for ssh forwarding
+# the while loop ensures that the server has been started
+url=""
+timeout=60
+
+echo "Waiting for jupyter to start (${timeout}sec timeout)"
+wait_time=0
+pause_time=1
+while [ -z "$url" ]
+do
+    ps -p $pid &>/dev/null || { echo "Jupyter exit unexpectedly" ; exit 1 ;}
+    sleep $pause_time
+    wait_time=$((wait_time + pause_time))
+    url=$(jupyter $list_cmd list | sed -n 's/\(http.*\) ::.*/\1/p' | head -n 1)
+    if [[ $wait_time -gt $timeout ]];then
+        echo "Timeout waiting for jupyter"
+        exit 1
+    fi
+done
+
+port=$(echo "$url" | sed -e 's/.*[a-z,0-9]:\([0-9]*\).*/\1/' )
+
+echo -e "
+    Run on local machine to forward jupyter from Lumi
+    -----------------------------------------------------------------
+    ssh -N -L $port:$(hostname):$port $USER@lumi.csc.fi
+    -----------------------------------------------------------------
+    "
+echo -e "                                                            
+    Copy/Paste this URL into your browser                            
+    -----------------------------------------------------------------
+    $(echo $url | sed "s/$(hostname)/localhost/g" )                                                            
+    -----------------------------------------------------------------
+    "                                                                
+trap "kill -1 ${pid}; exit 0" INT
+wait
