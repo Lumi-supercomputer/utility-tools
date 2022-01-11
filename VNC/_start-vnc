@@ -1,9 +1,7 @@
 #!/bin/bash
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-set -e
 
 function cleanup {
-       set +e
    if [[ ${_D+defined} ]];then
        $C_CMD /opt/TurboVNC/bin/vncserver -kill :$_D 2>/dev/null 
        rm -f  /tmp/.X11-unix/X$_D
@@ -77,6 +75,8 @@ trap cleanup EXIT
 vnc_start_file=$(mktemp /tmp/vnc_start.XXXXXX)
 
 $C_CMD /opt/TurboVNC/bin/vncserver -xstartup $_STARTUP_FILE  2> $vnc_start_file
+vnc_server_pid=$!
+
 _D=$(grep Desk $vnc_start_file  | cut -d ":" -f4)
 _P=$( grep "VNC conn" $(grep "Log file" $vnc_start_file | cut -d " " -f4) | rev | cut -d " " -f1 | rev)
 _msg  "\tVnc server running on display :$_D"
@@ -139,4 +139,4 @@ Connect with native (locally installed) vnc client, e.g TigerVNC
 When prompted for a password, use $_PASS
 =================="
 
-wait
+wait $vnc_server_pid
