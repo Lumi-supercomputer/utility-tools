@@ -5,10 +5,14 @@ set -e
 function cleanup {
        set +e
    if [[ ${_D+defined} ]];then
-       $C_CMD /opt/TurboVNC/bin/vncserver -kill :$_D &>/dev/null 
+       $C_CMD /opt/TurboVNC/bin/vncserver -kill :$_D 2>/dev/null 
+       rm -f  /tmp/.X11-unix/X$_D
+       rm -f  /tmp/.X$_D-lock
+       rm -f 
+       echo "Removed /tmp/.X$_D-lock"
+       kill -1 $novnc_pp &>/dev/null
+       kill -1 $novnc_p &>/dev/null
        kill $(jobs -p) &>/dev/null
-       kill -9 $novnc_pp &>/dev/null
-       kill -9 $novnc_p &>/dev/null
    fi
    exit 1
 }
@@ -52,7 +56,6 @@ else
     NOVNC_LOG=/dev/null
 fi
 
-
 _MOUNTS=/var/spool,/tmp,/tmp:/run,$PWD
 _PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8 ; echo '')
 _VNC_CONTAINER=$SCRIPT_DIR/vnc.sif
@@ -76,8 +79,8 @@ trap cleanup EXIT
 vnc_start_file=$(mktemp /tmp/vnc_start.XXXXXX)
 
 $C_CMD /opt/TurboVNC/bin/vncserver -xstartup $_STARTUP_FILE  2> $vnc_start_file
-_D=$(cat $vnc_start_file | grep Desk | cut -d ":" -f4)
-_P=$(cat $(cat $vnc_start_file  | grep "Log file" | cut -d " " -f4) | grep "VNC conn" | rev | cut -d " " -f1 | rev)
+_D=$(grep Desk $vnc_start_file  | cut -d ":" -f4)
+_P=$( grep "VNC conn" $(grep "Log file" $vnc_start_file | cut -d " " -f4) | rev | cut -d " " -f1 | rev)
 _msg  "\tVnc server running on display :$_D"
 _msg  "\tVnc port: $_P"
 

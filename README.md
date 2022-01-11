@@ -20,7 +20,7 @@ function can be set in the current shell. This can be achieved by:
 
 1. `source /path/to/_get_vnc_display`
 2. `alias start-vnc="source /path/to/_get_vnc_display"`
-3. `function start-vnc { source /path/to/_get_vnc_display  ;} && export -f start-vnc`
+3. `function start-vnc { source /path/to/_get_vnc_display "$@"  ;} && export -f start-vnc`
 
 Aliases are not exported to subshells + `shopt -s expand_aliases` does not help
 us with sbatch scripts. So the alias needs to be set in the job file (e.g by loading a module)
