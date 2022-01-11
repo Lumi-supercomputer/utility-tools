@@ -1,4 +1,5 @@
 #!/bin/bash
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 set -e
 
 function cleanup {
@@ -9,6 +10,7 @@ function cleanup {
        kill -9 $novnc_pp &>/dev/null
        kill -9 $novnc_p &>/dev/null
    fi
+   exit 1
 }
 
 function _msg {
@@ -22,6 +24,7 @@ while [[ $# -gt 0 ]]; do
   case $key in
     --debug)
       keep_log_file=1
+      shift
       ;;
     --help|-h)
       echo -e "Usage: start-vnc [OPTIONS]
@@ -52,10 +55,19 @@ fi
 
 _MOUNTS=/var/spool,/tmp,/tmp:/run,$PWD
 _PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8 ; echo '')
-_VNC_CONTAINER=vnc.sif
+_VNC_CONTAINER=$SCRIPT_DIR/vnc.sif
+_STARTUP_FILE=$SCRIPT_DIR/xstartup.turbovnc
+if [[ ! -e "$_VNC_CONTAINER" ]]; then
+    echo "FATAL (internal error):  Could not find vnc base container" 
+    exit 1
+elif [[ ! -e "$_STARTUP_FILE" ]];then
+    echo "FATAL (internal error):  Could not find xstartup.turbovnc" 
+    exit 1
+fi
 
 C_CMD="singularity exec -B $_MOUNTS $_VNC_CONTAINER"
 
+_msg "StartTime: $(date +"%Y-%m-%dT%H:%M:%S")"
 _msg "Generating password"
 echo "$_PASS" | $C_CMD /opt/TurboVNC/bin/vncpasswd -f > ~/.vnc/passwd
 _msg "Starting vnc server"
@@ -63,7 +75,7 @@ trap cleanup EXIT
 
 vnc_start_file=$(mktemp /tmp/vnc_start.XXXXXX)
 
-$C_CMD /opt/TurboVNC/bin/vncserver -xstartup ./xstartup.turbovnc  2> $vnc_start_file
+$C_CMD /opt/TurboVNC/bin/vncserver -xstartup $_STARTUP_FILE  2> $vnc_start_file
 _D=$(cat $vnc_start_file | grep Desk | cut -d ":" -f4)
 _P=$(cat $(cat $vnc_start_file  | grep "Log file" | cut -d " " -f4) | grep "VNC conn" | rev | cut -d " " -f1 | rev)
 _msg  "\tVnc server running on display :$_D"
@@ -125,6 +137,5 @@ Connect with native (locally installed) vnc client, e.g TigerVNC
     vncviewer localhost:6090
 When prompted for a password, use $_PASS
 =================="
-
 
 wait

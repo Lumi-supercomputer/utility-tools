@@ -1,0 +1,52 @@
+#!/bin/bash
+# This script is meant to be sourced
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+set +m
+if [[ -n "$SCRIPT_DIR" ]]; then
+    vnc_file=$(mktemp /tmp/vnc_log.XXXXXX)
+    $SCRIPT_DIR/_start-vnc | tee $vnc_file &
+    vnc_pid=$(jobs -p)
+    trap "kill -1 $vnc_pid && rm -f $vnc_file" EXIT
+    while true; do 
+        sleep 1
+        res=$(grep "CONNECT WITH BROWSER" $vnc_file)
+        ps -p $vnc_pid &>/dev/null || { break ;}
+        if [[ ! -z "$res" ]];then
+           arr=($(grep "Vnc server running " $vnc_file))
+           export _OLD_DISPLAY=$DISPLAY
+           export DISPLAY=${arr[-1]}
+           export _VNC_PID=$vnc_pid
+           export _VNC_LOG=$vnc_file
+           function stop-vnc {
+                if [[ ${_VNC_PID+defined} ]]; then
+                    kill -1 $_VNC_PID &>/dev/null
+                fi
+                rm -f $_VNC_LOG
+                unset -f stop-vnc
+                unset -f vnc-status
+                unset -f vnc-info
+                unset _VNC_PID
+                unset _VNC_LOG
+                export DISPLAY=$_OLD_DISPLAY
+                unset _OLD_DISPLAY
+                trap - EXIT 
+           }
+           function vnc-info {
+            if [[ ${_VNC_LOG+defined} ]]; then
+                cat $_VNC_LOG 2>/dev/null 
+            fi
+           }
+           function vnc-status {
+           if [[ ${_VNC_LOG+defined} ]]; then
+                ps -p $_VNC_PID &>/dev/null
+                return $?
+           fi
+           }
+
+           export -f vnc-status
+           export -f stop-vnc
+           export -f vnc-info
+           break
+        fi
+    done
+fi
