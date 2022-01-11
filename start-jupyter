@@ -18,12 +18,14 @@ while [[ $# -gt 0 ]]; do
   case $key in
     --debug)
       keep_log_file=1
+      shift
       ;;
     --lab)
       start_cmd=lab
       list_cmd=server
       type jupyter-lab &>/dev/null || {  echo "No jupyter lab found" ; exit 1  ;}
       echo "Selected jupyter lab"
+      shift
       ;;
     --help|-h)
       echo -e "Usage: start-jupyter [OPTIONS]
