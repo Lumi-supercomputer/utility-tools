@@ -8,8 +8,6 @@ function cleanup {
        $C_CMD /opt/TurboVNC/bin/vncserver -kill :$_D 2>/dev/null 
        rm -f  /tmp/.X11-unix/X$_D
        rm -f  /tmp/.X$_D-lock
-       rm -f 
-       echo "Removed /tmp/.X$_D-lock"
        kill -1 $novnc_pp &>/dev/null
        kill -1 $novnc_p &>/dev/null
        kill $(jobs -p) &>/dev/null
