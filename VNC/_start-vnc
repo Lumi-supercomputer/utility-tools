@@ -70,7 +70,7 @@ _msg "StartTime: $(date +"%Y-%m-%dT%H:%M:%S")"
 _msg "Generating password"
 echo "$_PASS" | $C_CMD /opt/TurboVNC/bin/vncpasswd -f > ~/.vnc/passwd
 _msg "Starting vnc server"
-trap cleanup EXIT
+trap cleanup EXIT INT
 
 vnc_start_file=$(mktemp /tmp/vnc_start.XXXXXX)
 
@@ -90,16 +90,19 @@ fi
 rm $vnc_start_file
 
 export DISPLAY=":$_D"
-_msg "Starting novnc proxy ( 60sec timeout )"
+
+timeout=60
+wait_time=0
+pause_time=1
+
+
+_msg "Starting novnc proxy ( ${timeout}sec timeout )"
 $C_CMD /opt/noVNC/utils/novnc_proxy --vnc localhost:$_P --listen $(hostname):0 &> $NOVNC_LOG &
 novnc_pp=$!
 if [[ ${keep_log_file+defined} ]];then
    _msg  "\tNovnc log saved to $NOVNC_LOG"
 fi
 
-timeout=60
-wait_time=0
-pause_time=1
 
 
 export novnc_p=""
@@ -115,11 +118,20 @@ while [[ -z "$novnc_p" || "$(echo "$novnc_p" | wc -l)" -gt 1  ]]; do
 done
 # novnc does not display the port correctly when passed 0 as the port number
 # so we need to find it out. 
-_VNC_PORT=$(lsof -i -p $novnc_p  2>/dev/null | grep $novnc_p | grep TCP | cut -d ":" -f2 | cut -d " " -f1)
-if [[ -z "$_VNC_PORT"  ]];then
-    _msg "Novnc proxy failed to start"
-    exit 1
-fi
+wait_time=0
+_msg "Resolving novnc proxy port ( ${timeout}sec timeout)"
+export _VNC_PORT=$(lsof -i -p $novnc_p  2>/dev/null | grep $novnc_p | grep TCP | cut -d ":" -f2 | cut -d " " -f1)
+while [[ -z "$_VNC_PORT"  ]];do
+    sleep $pause_time
+    wait_time=$((wait_time + pause_time))
+    export _VNC_PORT=$(lsof -i -p $novnc_p  2>/dev/null | grep $novnc_p | grep TCP | cut -d ":" -f2 | cut -d " " -f1)
+    if [[ $wait_time -gt $timeout ]];then
+        _msg "Failed to resolve port for novnc proxy"
+        exit 1
+    fi 
+    ps -p $novnc_pp &>/dev/null || { echo "Novnc exit unexpectedly" ; exit 1 ;}
+done
+
 _msg  "\tNovnc proxy on port: $_VNC_PORT"
 
 _msg  "\n\nCONNECT WITH BROWSER

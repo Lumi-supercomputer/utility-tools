@@ -1,0 +1,67 @@
+#!/bin/bash
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+if [[ ${TMPDIR+defined} ]];then
+    _TMP=${TMPDIR}
+else
+    _TMP=/tmp/$USER
+    mkdir -p $_TMP
+fi
+
+
+_DEFAULT_DESKTOP='
+<?xml version="1.0" encoding="UTF-8"?>
+
+<channel name="xfce4-desktop" version="1.0">
+  <property name="backdrop" type="empty">
+    <property name="screen0" type="empty">
+      <property name="monitor0" type="empty">
+        <property name="workspace0" type="empty">
+          <property name="color-style" type="int" value="0"/>
+          <property name="image-style" type="int" value="5"/>
+          <property name="last-image" type="string" value="/BackgroundImages/CSC-lumi1.jpg"/>
+        </property>
+        <property name="workspace1" type="empty">
+          <property name="color-style" type="int" value="0"/>
+          <property name="image-style" type="int" value="5"/>
+          <property name="last-image" type="string" value="/BackgroundImages/CSC-lumi1.jpg"/>
+        </property>
+        <property name="workspace2" type="empty">
+          <property name="color-style" type="int" value="0"/>
+          <property name="image-style" type="int" value="5"/>
+          <property name="last-image" type="string" value="/BackgroundImages/CSC-lumi1.jpg"/>
+        </property>
+        <property name="workspace3" type="empty">
+          <property name="color-style" type="int" value="0"/>
+          <property name="image-style" type="int" value="5"/>
+          <property name="last-image" type="string" value="/BackgroundImages/CSC-lumi1.jpg"/>
+        </property>
+      </property>
+    </property>
+  </property>
+</channel>
+'
+
+
+img_num=$((1 + $RANDOM % 3))
+if [[ ! -e  ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml ]];then
+   mkdir -p ~/.config/xfce4/xfconf/xfce-perchannel-xml
+   echo -e "$_DEFAULT_DESKTOP" > ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml 
+fi
+
+sed -i "s@/BackgroundImages.*@/BackgroundImages/CSC-lumi${img_num}.jpg\"/>@g" ~/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+# Login nodes have systemd running which change somethings
+# Additional bug which hangs ipv6 tcp connections for around 2 min
+# also on login nodes 
+
+# The ssh mounting is just a quick hack to stop the desktop to spawn and ssh agent
+# which can then be hard to safely kill.
+echo "Started xfce4 desktop"
+if [[ "$(hostname)" =~ "uan" ]]; then
+    rm -rf  /run/user/$UID 2>/dev/null
+    singularity exec -B /etc/machine-id,/pfs,/scratch,/projappl,/flash,/appl,/tmp:/tmp,/run,$SCRIPT_DIR/ssh-agent:/usr/bin/ssh-agent $SCRIPT_DIR/xfce.sif $SCRIPT_DIR/_start_xfce.sh &>/dev/null
+else
+    rm -rf $_TMP/user/$UID
+    mkdir -p $_TMP/user/$UID
+    singularity exec -B /etc/machine-id,/pfs,/scratch,/projappl,/flash,/appl,/tmp:/tmp,$_TMP:/run,$SCRIPT_DIR/ssh-agent:/usr/bin/ssh-agent $SCRIPT_DIR/xfce.sif $SCRIPT_DIR/_start_xfce.sh &>/dev/null 
+    
+fi

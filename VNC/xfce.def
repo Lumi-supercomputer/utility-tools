@@ -1,0 +1,27 @@
+Bootstrap: docker
+From: opensuse/leap:15.1
+
+%setup 
+    mkdir ${SINGULARITY_ROOTFS}/BackgroundImages
+
+%files
+    # images from https://www.lumi-supercomputer.eu/media/
+    CSC-lumi1.jpg /BackgroundImages 
+    CSC-lumi2.jpg /BackgroundImages
+    CSC-lumi3.jpg /BackgroundImages
+
+%post 
+    zypper -n install patterns-openSUSE-xfce
+    zypper -n install xterm
+    zypper -n install hostname
+    zypper -n install which
+    zypper -n install python3
+    zypper -n install python3-pip
+    pip3 install numpy
+    zypper -n install xkbcomp
+    zypper -n install xkbutils
+    zypper -n install xauth
+    zypper -n install wget
+    zypper -n install tar
+    zypper -n install xz
+
