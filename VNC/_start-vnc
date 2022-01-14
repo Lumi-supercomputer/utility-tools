@@ -26,15 +26,21 @@ while [[ $# -gt 0 ]]; do
       keep_log_file=1
       shift
       ;;
+    --no-wm)
+      nowm=1
+      shift
+      ;;
     --help|-h)
       echo -e "Usage: start-vnc [OPTIONS]
 Tool to start VNC server and print out connection information.
-Uses turbovnc and novnc, no other programs are started. 
+Uses turbovnc and novnc. By default will start the fluxbox window manager 
 
 Options:
     -h, --help      Show this message and exit
 
     --debug         Save novnc output to log file
+
+    --no-wm         Don't start the window manager 
 
 " 
       exit 0
@@ -73,8 +79,11 @@ _msg "Starting vnc server"
 trap cleanup EXIT INT
 
 vnc_start_file=$(mktemp /tmp/vnc_start.XXXXXX)
-
-$C_CMD /opt/TurboVNC/bin/vncserver -xstartup $_STARTUP_FILE  2> $vnc_start_file
+if [[ ${nowm+defined} ]];then
+    $C_CMD /opt/TurboVNC/bin/vncserver -noxstartup 2> $vnc_start_file
+else
+    $C_CMD /opt/TurboVNC/bin/vncserver -xstartup $_STARTUP_FILE  2> $vnc_start_file
+fi
 vnc_server_pid=$!
 
 _D=$(grep Desk $vnc_start_file  | cut -d ":" -f4)

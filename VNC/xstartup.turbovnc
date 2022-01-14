@@ -5,11 +5,6 @@ unset DBUS_SESSION_BUS_ADDRESS
 XDG_SESSION_TYPE=x11;  export XDG_SESSION_TYPE
 OS=`uname -s`
 
-# Emulate GDM
 USESTARTUP=0
-    if [ -f $HOME/.Xresources ]; then xrdb $HOME/.Xresources; fi
-    #xsetroot -solid grey
-    #xterm -geometry 80x24+10+10 -ls -title "TEST Desktop" &
-    #/scratch/project_462000002/nortamoh/VNC/mate.sh
-    exit 0
-
+if [ -f $HOME/.Xresources ]; then xrdb $HOME/.Xresources; fi
+fluxbox
