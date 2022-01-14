@@ -1,12 +1,13 @@
 #!/bin/bash
 # This script is meant to be sourced
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-set +m
 if [[ -n "$SCRIPT_DIR" ]]; then
     vnc_file=$(mktemp /tmp/vnc_log.XXXXXX)
+    set -m
     $SCRIPT_DIR/_start-vnc "$@" | tee $vnc_file &
     vnc_pid=$(jobs -p)
-    trap "kill -1 $vnc_pid 2>/dev/null ; rm -f $vnc_file; wait; trap - EXIT" EXIT INT
+    set +m
+    trap "kill -1 $vnc_pid 2>/dev/null ; rm -f $vnc_file; wait; trap - EXIT" EXIT 
     while true; do 
         sleep 1
         res=$(grep "CONNECT WITH BROWSER" $vnc_file)
