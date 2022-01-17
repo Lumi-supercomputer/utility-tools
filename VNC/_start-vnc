@@ -1,6 +1,27 @@
 #!/bin/bash
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+
+SSH_TO_COMPUTE="no"
+SUPERCOMPUTER=lumi
+MAIN_URL=$SUPERCOMPUTER.csc.fi
+
+
+if [[ "$SSH_TO_COMPUTE" == "yes" ]];then
+    _HN=localhost
+    _TARGET_HOST="$USER@$(hostname)"
+    _JUMP_HOST=" -J $USER@$MAIN_URL"
+elif [[ "$SSH_TO_COMPUTE" == "no" ]]; then
+    _HN=$(hostname)
+    _TARGET_HOST="$USER@$MAIN_URL"
+    _JUMP_HOST=""
+else
+    echo "FATAL (internal error): Unsupported value for SSH_TO_COMPUTE "
+    exit 1 
+fi
+
+
+
 function cleanup {
    if [[ ${_D+defined} ]];then
        $C_CMD /opt/TurboVNC/bin/vncserver -kill :$_D 2>/dev/null 
@@ -106,7 +127,7 @@ pause_time=1
 
 
 _msg "Starting novnc proxy ( ${timeout}sec timeout )"
-$C_CMD /opt/noVNC/utils/novnc_proxy --vnc localhost:$_P --listen $(hostname):0 &> $NOVNC_LOG &
+$C_CMD /opt/noVNC/utils/novnc_proxy --vnc localhost:$_P --listen $_HN:0 &> $NOVNC_LOG &
 novnc_pp=$!
 if [[ ${keep_log_file+defined} ]];then
    _msg  "\tNovnc log saved to $NOVNC_LOG"
@@ -145,18 +166,18 @@ _msg  "\tNovnc proxy on port: $_VNC_PORT"
 
 _msg  "\n\nCONNECT WITH BROWSER
 ==================
-Run on local machine to forward vnc connection from lumi to local computer, if 6060 in use change port 
-    ssh -N -L 6060:$(hostname):$_VNC_PORT $USER@lumi.csc.fi
+Run on local machine to forward vnc connection from $SUPERCOMPUTER to local computer, if the port is in use locally change the port 
+    ssh -N -L $_VNC_PORT:$_HN:$_VNC_PORT $_JUMP_HOST $_TARGET_HOST
 Connect to this url in browser on local machine after running , port needs to be the same as in the ssh command (left value)
-    http://localhost:6060/vnc.html?password=$_PASS
+    http://localhost:$_VNC_PORT/vnc.html?password=$_PASS
 =================="
 
 _msg  "\nCONNECT WITH VNC CLIENT
 ==================
-Run on local machine to forward vnc connection from lumi to local computer, if 6090 in use change port 
-    ssh -N -L 6090:$(hostname):$_P $USER@lumi.csc.fi
+Run on local machine to forward vnc connection from $SUPERCOMPUTER to local computer, if the port is in use locally change the port (left value)
+    ssh -N -L $_P:$_HN:$_P $_JUMP_HOST $_TARGET_HOST
 Connect with native (locally installed) vnc client, e.g TigerVNC
-    vncviewer localhost:6090
+    vncviewer localhost:$_P
 When prompted for a password, use $_PASS
 =================="
 

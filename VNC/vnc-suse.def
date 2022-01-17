@@ -4,6 +4,7 @@ From: opensuse/leap:15.1
 %post  
     export TURBOVNC_VERSION=2.2.6
     zypper -n install fluxbox
+    zypper -n install fluxbox-styles-upstream
     zypper -n install xterm
     zypper -n install hostname
     zypper -n install which
