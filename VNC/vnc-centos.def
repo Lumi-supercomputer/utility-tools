@@ -5,6 +5,15 @@ From: centos:7.9
 %post 
     yum -y --enablerepo=extras install epel-release
     yum -y install fluxbox
+    echo "
+session.menuFile:	~/.fluxbox/menu
+session.keyFile: ~/.fluxbox/keys
+session.styleFile: /usr/share/fluxbox/styles/bloe
+session.configVersion:	13
+session.screen0.toolbar.tools:  prevworkspace, workspacename, nextworkspace, clock, prevwindow, nextwindow, iconbar            
+session.screen0.toolbar.autoHide:       false
+session.screen0.toolbar.visible:        false
+" > /usr/share/fluxbox/init
     yum -y install xterm
     yum -y install xkeyboard-config
     yum -y install hostname

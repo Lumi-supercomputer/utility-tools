@@ -5,6 +5,15 @@ From: opensuse/leap:15.1
     export TURBOVNC_VERSION=2.2.6
     zypper -n install fluxbox
     zypper -n install fluxbox-styles-upstream
+    echo "
+session.menuFile:	~/.fluxbox/menu
+session.keyFile: ~/.fluxbox/keys
+session.styleFile: /usr/share/fluxbox/styles/bloe
+session.configVersion:	13
+session.screen0.toolbar.tools:  prevworkspace, workspacename, nextworkspace, clock, prevwindow, nextwindow, iconbar            
+session.screen0.toolbar.autoHide:       false
+session.screen0.toolbar.visible:        false
+" > /usr/share/fluxbox/init
     zypper -n install xterm
     zypper -n install hostname
     zypper -n install which
