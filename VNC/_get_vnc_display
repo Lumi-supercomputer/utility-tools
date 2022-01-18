@@ -7,7 +7,7 @@ if [[ -n "$SCRIPT_DIR" ]]; then
     $SCRIPT_DIR/_start-vnc "$@" | tee $vnc_file &
     vnc_pid=$(jobs -p)
     set +m
-    trap "kill -1 $vnc_pid 2>/dev/null ; rm -f $vnc_file; wait; trap - EXIT" EXIT 
+    trap "kill -1 $vnc_pid 2>/dev/null ; rm -f $vnc_file;  trap - EXIT" EXIT 
     while true; do 
         sleep 1
         res=$(grep "CONNECT WITH BROWSER" $vnc_file)
