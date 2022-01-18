@@ -1,5 +1,9 @@
 #!/bin/bash
 # Exit on error
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $SCRIPT_DIR/settings.sh 
+
 set -e
 # Exit on undefined variable
 set -u
@@ -47,8 +51,9 @@ Options:
       ;;
   esac
 done
-
-set -- "${POSITIONAL[@]}" # restore positional parameters
+if [[ ${POSITIONAL+defined} ]];then
+    set -- "${POSITIONAL[@]}" # restore positional parameters
+fi
 
 # Allow running on login node for now
 if [[ ${SLURM_JOB_ID+defined} ]];then
@@ -66,12 +71,8 @@ fi
 
 # Start notebook in current dir
 # Don't try to open a browser
-# Accept other than localhost connection as we might
-# be connecting to a compute node from a login node
-# If ssh to compute nodes is enabled
-# The forwarding command can be changed and 
-# only localhost connections allowed
-settings="--notebook-dir=$PWD --no-browser --ip=* "
+settings="--notebook-dir=$PWD --no-browser --ip=\"$_IP\" "
+echo "Command: jupyter $start_cmd $settings"
 
 if [[ "${keep_log_file+defined}"  ]];then
     echo "Jupyter log output can be found in $(pwd)/jupyter.$id.out"
@@ -87,7 +88,7 @@ trap "kill -9 ${pid}; exit 0 " EXIT
 # find url with token and port for ssh forwarding
 # the while loop ensures that the server has been started
 url=""
-timeout=60
+timeout=$NOTEBOOK_TIMEOUT
 
 echo "Waiting for jupyter to start (${timeout}sec timeout)"
 wait_time=0
@@ -107,15 +108,15 @@ done
 port=$(echo "$url" | sed -e 's/.*[a-z,0-9]:\([0-9]*\).*/\1/' )
 
 echo -e "
-    Run on local machine to forward jupyter from Lumi
+    Run on local machine to forward jupyter from ${SUPERCOMPUTER^}
     -----------------------------------------------------------------
-    ssh -N -L $port:$(hostname):$port $USER@lumi.csc.fi
+    ssh -N -L $port:$_HN:$port $_JUMP_HOST $_TARGET_HOST
     -----------------------------------------------------------------
     "
 echo -e "                                                            
     Copy/Paste this URL into your browser                            
     -----------------------------------------------------------------
-    $(echo $url | sed "s/$(hostname)/localhost/g" )                                                            
+    $(echo $url | sed "s/$_IP/localhost/g" )
     -----------------------------------------------------------------
     "                                                                
 trap "kill -1 ${pid}; exit 0" INT

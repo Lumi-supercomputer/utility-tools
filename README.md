@@ -1,6 +1,11 @@
 # utility-tools
 Small tools for users of Lumi
 
+Shared settings are in `settings.sh`
+Here you can set the timeouts, toggle if ssh to compute nodes is enabled
+and change the name of the supercomputer. 
+
+
 
 ## start-jupyter
 Will start a juptyer notebook and print connection information so that users can forward a port to Lumi and then connect to the 
@@ -27,7 +32,7 @@ us with sbatch scripts. So the alias needs to be set in the job file (e.g by loa
 and can not be inherited from the submission environment.
 
 Note, the vnc script does not start any program so connecting
-works but only a black screen is shown before some programs are started
+works but only a gray screen is shown before some programs are started
 The base container includes `xterm` which can be used as a sanity check
 
 As the vnc is sourced a job will end 

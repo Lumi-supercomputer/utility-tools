@@ -3,23 +3,10 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 export _VNC_INSTALL_ROOT=$SCRIPT_DIR
 
 
-SSH_TO_COMPUTE="no"
-SUPERCOMPUTER=lumi
-MAIN_URL=$SUPERCOMPUTER.csc.fi
+source $SCRIPT_DIR/../settings.sh 
 
 
-if [[ "$SSH_TO_COMPUTE" == "yes" ]];then
-    _HN=localhost
-    _TARGET_HOST="$USER@$(hostname)"
-    _JUMP_HOST=" -J $USER@$MAIN_URL"
-elif [[ "$SSH_TO_COMPUTE" == "no" ]]; then
-    _HN=$(hostname)
-    _TARGET_HOST="$USER@$MAIN_URL"
-    _JUMP_HOST=""
-else
-    echo "FATAL (internal error): Unsupported value for SSH_TO_COMPUTE "
-    exit 1 
-fi
+
 
 
 
@@ -122,7 +109,7 @@ rm $vnc_start_file
 
 export DISPLAY=":$_D"
 
-timeout=60
+timeout=$VNC_TIMEOUT
 wait_time=0
 pause_time=1
 
@@ -167,7 +154,7 @@ _msg  "\tNovnc proxy on port: $_VNC_PORT"
 
 _msg  "\n\nCONNECT WITH BROWSER
 ==================
-Run on local machine to forward vnc connection from $SUPERCOMPUTER to local computer, if the port is in use locally change the port 
+Run on local machine to forward vnc connection from ${SUPERCOMPUTER^} to local computer, if the port is in use locally change the port 
     ssh -N -L $_VNC_PORT:$_HN:$_VNC_PORT $_JUMP_HOST $_TARGET_HOST
 Connect to this url in browser on local machine after running , port needs to be the same as in the ssh command (left value)
     http://localhost:$_VNC_PORT/vnc.html?password=$_PASS
@@ -175,7 +162,7 @@ Connect to this url in browser on local machine after running , port needs to be
 
 _msg  "\nCONNECT WITH VNC CLIENT
 ==================
-Run on local machine to forward vnc connection from $SUPERCOMPUTER to local computer, if the port is in use locally change the port (left value)
+Run on local machine to forward vnc connection from ${SUPERCOMPUTER^} to local computer, if the port is in use locally change the port (left value)
     ssh -N -L $_P:$_HN:$_P $_JUMP_HOST $_TARGET_HOST
 Connect with native (locally installed) vnc client, e.g TigerVNC
     vncviewer localhost:$_P
