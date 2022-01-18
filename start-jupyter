@@ -4,6 +4,15 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $SCRIPT_DIR/settings.sh 
 
+
+# This is of course trivial to work around
+# Just meant as a guide for the user
+if [[ ! "${SLURM_JOB_ID+defined}" && "$JOB_ONLY" == "yes" ]]; then
+    echo "Jupyter notebook server can be started only on compute nodes"
+    echo "Run ${0##*/} in a batch job script or interactive session"
+    exit 1
+fi
+
 set -e
 # Exit on undefined variable
 set -u
