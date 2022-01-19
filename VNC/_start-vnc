@@ -83,7 +83,12 @@ C_CMD="singularity exec -B $_MOUNTS $_VNC_CONTAINER"
 
 _msg "StartTime: $(date +"%Y-%m-%dT%H:%M:%S")"
 _msg "Generating password"
-echo "$_PASS" | $C_CMD /opt/TurboVNC/bin/vncpasswd -f > ~/.vnc/passwd
+mkdir -p  ~/.vnc/
+chmod og-rwx ~/.vnc/
+chgrp $USER ~/.vnc/
+echo "$_PASS" | $C_CMD /opt/TurboVNC/bin/vncpasswd -f > ~/.vnc/passwd || {  echo "FATAL (internal error): password generation failed"; exit 1 ;} 
+chmod og-rwx ~/.vnc/passwd
+chgrp $USER ~/.vnc/passwd
 _msg "Starting vnc server"
 trap cleanup EXIT INT
 
@@ -94,8 +99,12 @@ else
     $C_CMD /opt/TurboVNC/bin/vncserver -xstartup $_STARTUP_FILE  2> $vnc_start_file
 fi
 vnc_server_pid=$!
-
-_D=$(grep Desk $vnc_start_file  | cut -d ":" -f4)
+_D=$( grep Desk $vnc_start_file  | cut -d ":" -f4)
+if [[ -z "$_D" ]];then
+    _msg "Vnc server failed to start"
+    cat $vnc_start_file
+    exit 1
+fi
 _P=$( grep "VNC conn" $(grep "Log file" $vnc_start_file | cut -d " " -f4) | rev | cut -d " " -f1 | rev)
 _msg  "\tVnc server running on display :$_D"
 _msg  "\tVnc port: $_P"
