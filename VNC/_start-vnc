@@ -11,14 +11,26 @@ source $SCRIPT_DIR/../settings.sh
 
 
 function cleanup {
+   rm -f $vnc_start_file
    if [[ ${_D+defined} ]];then
        $C_CMD /opt/TurboVNC/bin/vncserver -kill :$_D 2>/dev/null 
        rm -f  /tmp/.X11-unix/X$_D
        rm -f  /tmp/.X$_D-lock
-       kill -1 $novnc_pp &>/dev/null
-       kill -1 $novnc_p &>/dev/null
-       kill $(jobs -p) &>/dev/null
    fi
+   running=$($C_CMD /opt/TurboVNC/bin/vncserver -list | grep "^:" )
+   while IFS= read -r r; do
+       rr=($r)
+   done <<< "$running"
+   extra_pids=($(ps -u $USER | grep Xvnc | awk '{ print $1 }'))
+   #Possible that the lock file has not been created
+   for p in ${extra_pids[@]};do
+       grep "$_VNC_SHELL_ID" /proc/$p/environ &> /dev/null && kill -9 $p 2>/dev/null
+   done
+
+
+   kill -1 $novnc_pp &>/dev/null
+   kill -1 $novnc_p &>/dev/null
+   kill $(jobs -p) &>/dev/null
    exit 1
 }
 
@@ -79,7 +91,8 @@ elif [[ ! -e "$_STARTUP_FILE" ]];then
     exit 1
 fi
 
-C_CMD="singularity exec -B $_MOUNTS $_VNC_CONTAINER"
+C_CMD="singularity --silent exec -B $_MOUNTS $_VNC_CONTAINER"
+trap cleanup EXIT INT
 
 _msg "StartTime: $(date +"%Y-%m-%dT%H:%M:%S")"
 _msg "Generating password"
@@ -90,7 +103,6 @@ echo "$_PASS" | $C_CMD /opt/TurboVNC/bin/vncpasswd -f > ~/.vnc/passwd || {  echo
 chmod og-rwx ~/.vnc/passwd
 chgrp $USER ~/.vnc/passwd
 _msg "Starting vnc server"
-trap cleanup EXIT INT
 
 vnc_start_file=$(mktemp /tmp/vnc_start.XXXXXX)
 if [[ ${nowm+defined} ]];then
@@ -98,7 +110,8 @@ if [[ ${nowm+defined} ]];then
 else
     $C_CMD /opt/TurboVNC/bin/vncserver -xstartup $_STARTUP_FILE  2> $vnc_start_file
 fi
-vnc_server_pid=$!
+
+
 _D=$( grep Desk $vnc_start_file  | cut -d ":" -f4)
 if [[ -z "$_D" ]];then
     _msg "Vnc server failed to start"
@@ -116,6 +129,8 @@ if [[ ${keep_log_file+defined} ]];then
 fi
 rm $vnc_start_file
 
+
+
 export DISPLAY=":$_D"
 
 timeout=$VNC_TIMEOUT
@@ -124,7 +139,7 @@ pause_time=1
 
 
 _msg "Starting novnc proxy ( ${timeout}sec timeout )"
-$C_CMD /opt/noVNC/utils/novnc_proxy --vnc localhost:$_P --listen $_HN:0 &> $NOVNC_LOG &
+$C_CMD /opt/noVNC/utils/novnc_proxy --vnc localhost:$_P --listen $_HN:0 &> $NOVNC_LOG & 
 novnc_pp=$!
 if [[ ${keep_log_file+defined} ]];then
    _msg  "\tNovnc log saved to $NOVNC_LOG"
@@ -178,4 +193,4 @@ Connect with native (locally installed) vnc client, e.g TigerVNC
 When prompted for a password, use $_PASS
 =================="
 
-wait $vnc_server_pid
+wait 

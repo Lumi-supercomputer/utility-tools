@@ -1,23 +1,44 @@
 #!/bin/bash
 # This script is meant to be sourced
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-if [[ -n "$SCRIPT_DIR" ]]; then
-    vnc_file=$(mktemp /tmp/vnc_log.XXXXXX)
+
+
+## Clean some old stuff
+lock_files=($(ls -al /tmp/ | grep "$USER" | grep -o "\s*.X[0-9]-lock$"))
+for f in "${lock_files[@]}";do
+    kill -0 "$(cat /tmp/$f 2>/dev/null || true )" &>/dev/null || {  rm -f /tmp/.X11-unix/$( grep -o  "X[0-9]\+" <<< "$f" ) ; rm -f /tmp/$f   ; }
+done
+
+unset f
+unset lock_files
+
+
+
+
+
+
+
+if [[ $(type -t stop-vnc) == function ]]; then
+     echo "Seems like this shell already has started a VNC server"
+     echo "Display the connection information using vnc-info"
+     echo "Stop the VNC server using stop-vnc"
+
+elif [[ -n "$SCRIPT_DIR" ]]; then 
+
+    trap 'rm -f $vnc_file; unset vnc_file ;stop-vnc &>/dev/null ; kill -1 $vnc_pid  &>/dev/null ; unset vnc_pid  ;break 2>/dev/null ; trap - EXIT' EXIT INT
+    export vnc_file=$(mktemp /tmp/vnc_log.XXXXXX)
+    read _VNC_SHELL_ID < <(base64 <<< "$$_get_vnc_display" )
+    export _VNC_SHELL_ID
     set -m
     $SCRIPT_DIR/_start-vnc "$@" | tee $vnc_file &
-    vnc_pid=$(jobs -p)
+    unset _VNC_SHELL_ID
+    export vnc_pid=$(jobs -p)
     set +m
-    trap "kill -1 $vnc_pid 2>/dev/null ; rm -f $vnc_file;  trap - EXIT" EXIT 
     while true; do 
         sleep 1
         res=$(grep "CONNECT WITH BROWSER" $vnc_file)
         ps -p $vnc_pid &>/dev/null || { break ;}
         if [[ ! -z "$res" ]];then
-           arr=($(grep "Vnc server running " $vnc_file))
-           export _OLD_DISPLAY=$DISPLAY
-           export DISPLAY=${arr[-1]}
-           export _VNC_PID=$vnc_pid
-           export _VNC_LOG=$vnc_file
            function stop-vnc {
                 if [[ ${_VNC_PID+defined} ]]; then
                     kill -1 $_VNC_PID &>/dev/null
@@ -30,6 +51,8 @@ if [[ -n "$SCRIPT_DIR" ]]; then
                 unset _VNC_LOG
                 export DISPLAY=$_OLD_DISPLAY
                 unset _OLD_DISPLAY
+                unset vnc_file
+                unset vnc_pid
                 trap - EXIT 
            }
            function vnc-info {
@@ -43,6 +66,11 @@ if [[ -n "$SCRIPT_DIR" ]]; then
                 return $?
            fi
            }
+           arr=($(grep "Vnc server running " $vnc_file))
+           export _OLD_DISPLAY=$DISPLAY
+           export DISPLAY=${arr[-1]}
+           export _VNC_PID=$vnc_pid
+           export _VNC_LOG=$vnc_file
 
            export -f vnc-status
            export -f stop-vnc
@@ -50,4 +78,7 @@ if [[ -n "$SCRIPT_DIR" ]]; then
            break
         fi
     done
+    trap - INT
+else
+    echo "FATAL (internal error): Failed to resolve script location"
 fi

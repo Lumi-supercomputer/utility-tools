@@ -7,4 +7,6 @@ OS=`uname -s`
 
 USESTARTUP=0
 if [ -f $HOME/.Xresources ]; then xrdb $HOME/.Xresources; fi
+ulimit -S -c 0 
 fluxbox
+
