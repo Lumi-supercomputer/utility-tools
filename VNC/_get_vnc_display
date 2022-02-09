@@ -1,6 +1,13 @@
 #!/bin/bash
 # This script is meant to be sourced
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $SCRIPT_DIR/../settings.sh 
+
+if [[ ! "${SLURM_JOB_ID+defined}" && "$JOB_ONLY" == "yes" ]]; then     
+    echo "VNC server can only be started  on compute nodes"
+    echo "Run start-vnc in a batch job script or interactive session"   
+    return 1
+fi                                                                     
 
 
 ## Clean some old stuff
