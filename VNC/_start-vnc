@@ -79,7 +79,7 @@ else
     NOVNC_LOG=/dev/null
 fi
 
-_MOUNTS=/var/spool,/tmp,/tmp:/run,$PWD,$_VNC_INSTALL_ROOT
+_MOUNTS=$HOME,/var/spool,/tmp,/tmp:/run,$PWD,$_VNC_INSTALL_ROOT
 _PASS=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8 ; echo '')
 _VNC_CONTAINER=$SCRIPT_DIR/vnc.sif
 _STARTUP_FILE=$SCRIPT_DIR/xstartup.turbovnc
