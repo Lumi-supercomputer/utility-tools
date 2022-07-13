@@ -162,11 +162,17 @@ done
 # so we need to find it out. 
 wait_time=0
 _msg "Resolving novnc proxy port ( ${timeout}sec timeout)"
-export _VNC_PORT=$(lsof -i -p $novnc_p  2>/dev/null | grep $novnc_p | grep TCP | cut -d ":" -f2 | cut -d " " -f1)
-while [[ -z "$_VNC_PORT"  ]];do
-    sleep $pause_time
-    wait_time=$((wait_time + pause_time))
-    export _VNC_PORT=$(lsof -i -p $novnc_p  2>/dev/null | grep $novnc_p | grep TCP | cut -d ":" -f2 | cut -d " " -f1)
+function getPortForPid {                                                               
+    inode=$(ls -l /proc/$1/fd/* | grep -o socket.* | grep -o  "[0-9]*")                
+    portHex=$(cat /proc/net/tcp | grep $inode | awk '{print $2}' | cut -d ":" -f2 )    
+    echo $((16#$portHex))                                                              
+}                                                                                      
+                                                                                       
+export _VNC_PORT=$( getPortForPid $novnc_p  2>/dev/null )                              
+while [[ -z "$_VNC_PORT"  ]];do                                                        
+    sleep $pause_time                                                                  
+    wait_time=$((wait_time + pause_time))                                              
+    export _VNC_PORT=$( getPortForPid $novnc_p )                                       
     if [[ $wait_time -gt $timeout ]];then
         _msg "Failed to resolve port for novnc proxy"
         exit 1
