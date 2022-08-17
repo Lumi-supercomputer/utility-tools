@@ -1,0 +1,93 @@
+#!/bin/bash
+_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export PATH="$_SCRIPT_DIR/../DROP/bin:$_SCRIPT_DIR/../DROP/sbin:$PATH"
+# srun --pty bash has the incorrect value for hostname
+HOSTNAME=$(hostname)
+ps -fu $USER | grep "${HOSTNAME}_${SLURM_JOB_ID}_id" | grep -vq grep
+if [[ $? -eq 0 ]]; then
+    echo "SSH server already running on this node for jobid ${SLURM_JOB_ID}"
+    exit 1
+fi
+
+if [[ -z ${SLURM_JOB_ID+defined} ]]; then
+    echo "Run within a slurm job"
+    exit 1
+fi
+mkdir -p $_SCRIPT_DIR/../FAKE_HOMES/${SLURM_JOB_ID}
+chmod og-rwx $_SCRIPT_DIR/../FAKE_HOMES
+export HOME=$_SCRIPT_DIR/../FAKE_HOMES/${SLURM_JOB_ID}
+export FAKE_HOME=$_SCRIPT_DIR/../FAKE_HOMES/${SLURM_JOB_ID}
+chmod og-rwx $FAKE_HOME
+mkdir -p $FAKE_HOME/.ssh 
+if [[ ! ${TMDPIR+defined} ]];then
+    export TMPDIR=/tmp/$USER
+    mkdir -p $TMPDIR
+fi
+if [[ ! -e $TMPDIR/${HOSTNAME}_${SLURM_JOB_ID}_id ]];then
+    2>/dev/null dropbearkey -t ed25519 -f $TMPDIR/${HOSTNAME}_${SLURM_JOB_ID}_id | grep "ssh-ed25519" | awk '{print $3,$1,$2}' | cut -d "@" -f2  >> $FAKE_HOME/.ssh/known_hosts  
+else
+    key=$( 2>/dev/null dropbearkey -t ed25519 -y -f $TMPDIR/${HOSTNAME}_${SLURM_JOB_ID}_id | grep "ssh-ed25519" | awk '{print $3,$1,$2}' | cut -d "@" -f2 )
+    grep -q $HOSTNAME $FAKE_HOME/.ssh/known_hosts
+    if [[ $? -eq 0 ]];then
+        sed -i "s@^$HOSTNAME.*@$key@g" "$FAKE_HOME/.ssh/known_hosts" 
+    else
+        echo $key >> $FAKE_HOME/.ssh/known_hosts
+    fi
+fi
+
+if [[ ! -e $FAKE_HOME/.ssh/ssh_key ]];then
+   2>/dev/null dropbearkey -t ed25519 -f $FAKE_HOME/.ssh/ssh_key | grep "^ssh-ed25519"  >> $FAKE_HOME/.ssh/authorized_keys
+fi
+# Will go to the backgroud
+DROPBEAR_PORT=0
+dropbear -m -p $DROPBEAR_PORT -E -F -r $TMPDIR/${HOSTNAME}_${SLURM_JOB_ID}_id &>/dev/null &
+DROPBEAR_PID=$!
+echo "Started ssh server with pid $! on $HOSTNAME for job ${SLURM_JOB_ID}"
+
+# Dynamic so we need to find that out
+timelimit=30
+echo "Resolving ssh server port (${timelimit}sec timeout)"
+counter=0
+
+function getPortForPid {                                                               
+    inode=($(ls -l /proc/$1/fd/* | grep -o socket.* | grep -o  "[0-9]*"))               
+    for i in ${inode[@]}; do
+        portHex=$(cat /proc/net/tcp | grep $i | awk '{print $2}' | cut -d ":" -f2 )    
+        if [[  ! $((16#$portHex)) -eq  0 ]];then
+            echo $((16#$portHex))                                                              
+            return 1
+        fi
+    done
+}       
+
+if [[ $DROPBEAR_PORT -eq 0 ]];then
+    while true;do
+        if [[ $counter -gt $timelimit  ]]; then
+            echo "Timeout while resolving port for ssh server"
+            exit 1
+        fi
+        DROPBEAR_PORT=$(getPortForPid $DROPBEAR_PID)
+        if [[ -n "$DROPBEAR_PORT" ]]; then
+            echo  "SSH server is running on port $DROPBEAR_PORT "
+            break
+        fi
+        sleep 1
+        counter=$((counter +1))
+    done
+fi
+
+
+
+
+if [[ -e $FAKE_HOME/port_mappings.txt ]];then 
+    grep -q "$HOSTNAME" "$FAKE_HOME/port_mappings.txt" 2>/dev/null
+    if [ $? -eq 0 ]; then
+        sed -i  "s/^$HOSTNAME.*/$HOSTNAME $DROPBEAR_PORT/g" "$FAKE_HOME/port_mappings.txt"
+    else
+        echo "$HOSTNAME $DROPBEAR_PORT" >> $FAKE_HOME/port_mappings.txt 
+    fi
+else
+    echo "$HOSTNAME $DROPBEAR_PORT" >> $FAKE_HOME/port_mappings.txt 
+
+fi
+echo -e "Connection command:\njob-ssh $SLURM_JOB_ID $HOSTNAME"

@@ -5,6 +5,17 @@ Shared settings are in `settings.sh`
 Here you can set the timeouts, toggle if ssh to compute nodes is enabled
 and change the name of the supercomputer. 
 
+## SSH
+Minimal ssh server + client using dropbear to use on compute nodes. 
+**Use only for debugging**. 
+
+Just copy/move the SSH folder to where you want to have it installed
+run `setup.sh` and add the `bin` folder to your path
+
+`start-ssh-server` will launch the server and
+`job-ssh <jobid> <node> [optinal commands]` will then allow you to ssh to the node 
+
+To avoid clutter in `$HOME` all keys are generated per job basis under the installation directory.
 
 
 ## start-jupyter
