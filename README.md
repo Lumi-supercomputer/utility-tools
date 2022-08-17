@@ -1,3 +1,6 @@
+
+
+
 # utility-tools
 Small tools for users of Lumi
 
@@ -16,6 +19,8 @@ run `setup.sh` and add the `bin` folder to your path
 `job-ssh <jobid> <node> [optinal commands]` will then allow you to ssh to the node 
 
 To avoid clutter in `$HOME` all keys are generated per job basis under the installation directory.
+
+https://user-images.githubusercontent.com/40563680/185119751-f304a9da-11b3-4881-b223-3024431f8e66.mp4
 
 
 ## start-jupyter
