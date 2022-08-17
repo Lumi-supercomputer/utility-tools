@@ -23,6 +23,23 @@ To avoid clutter in `$HOME` all keys are generated per job basis under the insta
 https://user-images.githubusercontent.com/40563680/185119751-f304a9da-11b3-4881-b223-3024431f8e66.mp4
 
 
+A much more light weight alternative is to just use dropbear directly:
+
+**Starting the server**
+```
+mkdir -p /tmp/$USER && dropbearkey -t ed25519 -f /tmp/$USER/drop_id && dropbear -F -m -p 4040 -E -r /tmp/$USER/drop_id
+```
+**Generting connection keys** (only one time needed)
+```
+dropbearkey -t ed25519 -f $HOME/.ssh/drop_ssh_key  | grep "^ssh-ed25519" >> $HOME/.ssh/authorized_keys
+```
+
+**Connecting**
+```
+dbclient -i $HOME/.ssh/drop_ssh_key -p 4040 nid005032
+```
+
+
 ## start-jupyter
 Will start a juptyer notebook and print connection information so that users can forward a port to Lumi and then connect to the 
 notebook in their local browser. 
