@@ -145,7 +145,7 @@ echo -e "
 
     Linux / macOS / MobaXTerm / Cmder:                               
     -----------------------------------------------------------------
-    ssh -N -L $port:$_HN:$port $_JUMP_HOST $_TARGET_HOST             
+    ssh -N -L $port:$_HN:$port $_JUMP_HOST $_TARGET_HOST
     -----------------------------------------------------------------
                                                                  
     PuTTy:                                                           
