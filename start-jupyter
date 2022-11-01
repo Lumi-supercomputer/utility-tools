@@ -78,7 +78,7 @@ fi
 # Just meant as a guide for the user
 if [[ ! "${SLURM_JOB_ID+defined}" && "$JOB_ONLY" == "yes" ]]; then
     echo "Jupyter notebook server can be started only on compute nodes"
-    echo "Run ${0##*/} in a batch job script or interactive session"
+    echo "Run $prog_name in a batch job script or interactive session"
     exit 1
 fi
 
