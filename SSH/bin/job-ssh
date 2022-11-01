@@ -1,0 +1,18 @@
+#!/bin/bash
+_SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+export PATH="$_SCRIPT_DIR/../DROP/bin:$_SCRIPT_DIR/../DROP/sbin:$PATH"
+if [[ $# -lt 2 ]];then
+    echo "Wrong number of arguments ($#)"
+    echo "job-ssh <jobid> <node> [optional commands]"
+    exit 1
+fi
+SLURMJOB=$1
+NODENAME=$2
+
+PORT=$(grep $NODENAME $_SCRIPT_DIR/../FAKE_HOMES/$SLURMJOB/port_mappings.txt | cut -d " " -f2)
+export HOME=$_SCRIPT_DIR/../FAKE_HOMES/$SLURMJOB
+if [[ $# -gt 2 ]];then
+    dbclient -i $_SCRIPT_DIR/../FAKE_HOMES/$SLURMJOB/.ssh/ssh_key -p $PORT $NODENAME "export HOME=/users/$USER;cd /users/$USER; ${@:3}"
+else
+    dbclient -i $_SCRIPT_DIR/../FAKE_HOMES/$SLURMJOB/.ssh/ssh_key -p $PORT $NODENAME -t "export HOME=/users/$USER;cd /users/$USER; bash -i"
+fi

@@ -1,3 +1,6 @@
+
+
+
 # utility-tools
 Small tools for users of Lumi
 
@@ -5,6 +8,36 @@ Shared settings are in `settings.sh`
 Here you can set the timeouts, toggle if ssh to compute nodes is enabled
 and change the name of the supercomputer. 
 
+## SSH
+Minimal ssh server + client using dropbear to use on compute nodes. 
+**Use only for debugging**. 
+
+Just copy/move the SSH folder to where you want to have it installed
+run `setup.sh` and add the `bin` folder to your path
+
+`start-ssh-server` will launch the server and
+`job-ssh <jobid> <node> [optinal commands]` will then allow you to ssh to the node 
+
+To avoid clutter in `$HOME` all keys are generated per job basis under the installation directory.
+
+https://user-images.githubusercontent.com/40563680/185119751-f304a9da-11b3-4881-b223-3024431f8e66.mp4
+
+
+A much more light weight alternative is to just use dropbear directly:
+
+**Starting the server**
+```
+mkdir -p /tmp/$USER && dropbearkey -t ed25519 -f /tmp/$USER/drop_id && dropbear -F -m -p 4040 -E -r /tmp/$USER/drop_id
+```
+**Generting connection keys** (only one time needed)
+```
+dropbearkey -t ed25519 -f $HOME/.ssh/drop_ssh_key  | grep "^ssh-ed25519" >> $HOME/.ssh/authorized_keys
+```
+
+**Connecting**
+```
+dbclient -i $HOME/.ssh/drop_ssh_key -p 4040 nid005032
+```
 
 
 ## start-jupyter

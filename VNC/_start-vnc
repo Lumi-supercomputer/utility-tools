@@ -118,7 +118,7 @@ if [[ -z "$_D" ]];then
     cat $vnc_start_file
     exit 1
 fi
-_P=$( grep "VNC conn" $(grep "Log file" $vnc_start_file | cut -d " " -f4) | rev | cut -d " " -f1 | rev)
+_P=$( grep "VNC conn" $(grep "Log file" $vnc_start_file | cut -d " " -f4) | tail  -n1 | rev | cut -d " " -f1 | rev)
 _msg  "\tVnc server running on display :$_D"
 _msg  "\tVnc port: $_P"
 
@@ -162,11 +162,22 @@ done
 # so we need to find it out. 
 wait_time=0
 _msg "Resolving novnc proxy port ( ${timeout}sec timeout)"
-export _VNC_PORT=$(lsof -i -p $novnc_p  2>/dev/null | grep $novnc_p | grep TCP | cut -d ":" -f2 | cut -d " " -f1)
-while [[ -z "$_VNC_PORT"  ]];do
-    sleep $pause_time
-    wait_time=$((wait_time + pause_time))
-    export _VNC_PORT=$(lsof -i -p $novnc_p  2>/dev/null | grep $novnc_p | grep TCP | cut -d ":" -f2 | cut -d " " -f1)
+function getPortForPid {                                                               
+    # Only select one port if multiple are found
+    inode=$(ls -vl /proc/$1/fd/* | grep -o socket.* |  head -n1 | grep -o  "[0-9]*")                
+    portHex=$(cat /proc/net/tcp | grep $inode 2>/dev/null | awk '{print $2}' | cut -d ":" -f2 )    
+    # We might be checking before the port has been opened 
+    # So only print something when we found a port
+    if [[ ! -z $portHex ]]; then
+        echo $((16#$portHex))
+    fi
+}                                                                                      
+                                                                                       
+export _VNC_PORT=$( getPortForPid $novnc_p  2>/dev/null )                              
+while [[ -z "$_VNC_PORT"  ]];do                                                        
+    sleep $pause_time                                                                  
+    wait_time=$((wait_time + pause_time))                                              
+    export _VNC_PORT=$( getPortForPid $novnc_p )                                       
     if [[ $wait_time -gt $timeout ]];then
         _msg "Failed to resolve port for novnc proxy"
         exit 1
