@@ -1,28 +1,49 @@
 #!/bin/bash
 # Exit on error
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-source $SCRIPT_DIR/settings.sh 
+SOURCE="${BASH_SOURCE[0]}"                                                                                                                                       
+_O_SOURCE=$SOURCE                                                                                                                                                
+while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink                                                                               
+  DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"                                                                                               
+  SOURCE="$(readlink "$SOURCE")"                                                                                                                                 
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE" # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+done                                                                                                                                                             
+DIR="$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )"                                                                                                 
+source $DIR/settings.sh 
 
 
-# This is of course trivial to work around
-# Just meant as a guide for the user
-if [[ ! "${SLURM_JOB_ID+defined}" && "$JOB_ONLY" == "yes" ]]; then
-    echo "Jupyter notebook server can be started only on compute nodes"
-    echo "Run ${0##*/} in a batch job script or interactive session"
-    exit 1
-fi
 
 set -e
 # Exit on undefined variable
 set -u
 
-# Check that jupyter exists
-type jupyter &>/dev/null || {  echo "No jupyter found" ; exit 1  ;}
 
 # By default start notebook not lab
 start_cmd=notebook
 list_cmd=notebook
+
+function _help(){
+      echo -e "Usage: $_O_SOURCE [OPTIONS]
+Tool to start jupyter and print out connection information.
+The jupyter executable is selected from the users PATH variable
+
+Options:
+    -h, --help      Show this message and exit
+
+    --debug         Save jupyter output to a file
+${LAB_FLAG:-}"
+      exit 0
+}
+
+
+# Extra functionality to deal with symlinks
+# with different names
+prog_name=$(basename $_O_SOURCE)
+if [[ $prog_name == "start-jupyter" ]];then
+    export LAB_FLAG="\n    --lab           Start Jupyterlab instead\n"
+elif [[ $prog_name =~  "jupyterlab"  ]];then
+    set -- "${@}" "--lab"
+fi
 
 ## Argument parsing
 POSITIONAL=()
@@ -36,27 +57,15 @@ while [[ $# -gt 0 ]]; do
     --lab)
       start_cmd=lab
       list_cmd=server
-      type jupyter-lab &>/dev/null || {  echo "No jupyter lab found" ; exit 1  ;}
       echo "Selected jupyter lab"
       shift
       ;;
     --help|-h)
-      echo -e "Usage: start-jupyter [OPTIONS]
-Tool to start jupyter and print out connection information.
-The jupyter executable is selected from the users PATH variable
-
-Options:
-    -h, --help      Show this message and exit
-
-    --debug         Save jupyter output to a file 
-
-    --lab           Start Jupyterlab instead
-" 
-      exit 0
+        _help
       ;;
     *)    # unknown option
-      POSITIONAL+=("$1") # save it in an array for later
-      shift # past argument
+      echo -e "Unknown argument: $key\nUsage: $_O_SOURCE [OPTIONS], see --help for more information"
+      exit 1
       ;;
   esac
 done
@@ -64,7 +73,22 @@ if [[ ${POSITIONAL+defined} ]];then
     set -- "${POSITIONAL[@]}" # restore positional parameters
 fi
 
-# Allow running on login node for now
+
+# This is of course trivial to work around
+# Just meant as a guide for the user
+if [[ ! "${SLURM_JOB_ID+defined}" && "$JOB_ONLY" == "yes" ]]; then
+    echo "Jupyter notebook server can be started only on compute nodes"
+    echo "Run ${0##*/} in a batch job script or interactive session"
+    exit 1
+fi
+
+# Check that jupyter exists
+type jupyter &>/dev/null || {  echo "No jupyter found" ; exit 1  ;}
+if [[ $start_cmd == "lab" ]];then 
+      type jupyter-lab &>/dev/null || {  echo "No jupyter lab found" ; exit 1  ;}
+fi
+
+
 if [[ ${SLURM_JOB_ID+defined} ]];then
     id=$SLURM_JOB_ID
 else
@@ -118,8 +142,17 @@ port=$(echo "$url" | sed -e 's/.*[a-z,0-9]:\([0-9]*\).*/\1/' )
 
 echo -e "
     Run on local machine to forward jupyter from ${SUPERCOMPUTER^}
+
+    Linux / macOS / MobaXTerm / Cmder:                               
     -----------------------------------------------------------------
-    ssh -N -L $port:$_HN:$port $_JUMP_HOST $_TARGET_HOST
+    ssh -N -L $port:$_HN:$port $_JUMP_HOST $_TARGET_HOST             
+    -----------------------------------------------------------------
+                                                                 
+    PuTTy:                                                           
+    -----------------------------------------------------------------
+    ssh -N -L $port:$_HN:$port $_TARGET_HOST 
+    Set Source ($port) and Destination ($_HN:$port) in:              
+    PuTTy -> Connection -> SSH -> Tunnels                            
     -----------------------------------------------------------------
     "
 echo -e "                                                            
