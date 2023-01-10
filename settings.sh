@@ -33,7 +33,11 @@ if [[ "$SSH_TO_COMPUTE" == "yes" ]];then
     _JUMP_HOST=" -J $USER@$MAIN_URL"
     _IP="127.0.0.1"
 elif [[ "$SSH_TO_COMPUTE" == "no" ]]; then
-    _HN=$(hostname)
+    # the name reported by just hostname might not be routable, find one which is
+    names=($(hostname -A ))
+    for n in "${names[@]}"; do 
+       ping -c 1 -w 1 $n &>/dev/null && { export _HN=$n; break ;} 
+    done
     _TARGET_HOST="$USER@$MAIN_URL"
     _JUMP_HOST=""
     _IP="0.0.0.0"
