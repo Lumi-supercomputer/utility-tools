@@ -41,6 +41,7 @@ elif [[ "$SSH_TO_COMPUTE" == "no" ]]; then
     _TARGET_HOST="$USER@$MAIN_URL"
     _JUMP_HOST=""
     _IP="0.0.0.0"
+    _DEFAULT_PORT=8888
 else
     echo "FATAL (internal error): Unsupported value for SSH_TO_COMPUTE "
     exit 1 
