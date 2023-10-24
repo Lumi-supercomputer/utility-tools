@@ -158,7 +158,7 @@ echo -e "
 echo -e "                                                            
     Copy/Paste this URL into your browser                            
     -----------------------------------------------------------------
-    $(echo $url | sed "s/$_IP/localhost/g" )
+    $(echo $url | sed "s/\(http:\/\/\)\([a-z0-9]*\)/\1localhost/g" )
     -----------------------------------------------------------------
     "                                                                
 trap "kill -1 ${pid}; exit 0" INT
