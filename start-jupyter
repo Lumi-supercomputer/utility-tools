@@ -31,6 +31,8 @@ Options:
     -h, --help      Show this message and exit
 
     --debug         Save jupyter output to a file
+
+    --port xxxx     Specify port to start jupyter server on
 ${LAB_FLAG:-}"
       exit 0
 }
@@ -44,7 +46,7 @@ if [[ $prog_name == "start-jupyter" ]];then
 elif [[ $prog_name =~  "jupyterlab"  ]];then
     set -- "${@}" "--lab"
 fi
-
+PORT=$_DEFAULT_PORT # default port
 ## Argument parsing
 POSITIONAL=()
 while [[ $# -gt 0 ]]; do
@@ -58,6 +60,11 @@ while [[ $# -gt 0 ]]; do
       start_cmd=lab
       list_cmd=server
       echo "Selected jupyter lab"
+      shift
+      ;;
+    --port)
+      PORT="$2"
+      shift
       shift
       ;;
     --help|-h)
@@ -104,7 +111,7 @@ fi
 
 # Start notebook in current dir
 # Don't try to open a browser
-settings="--notebook-dir=$PWD --no-browser --ip=\"$_IP\" "
+settings="--notebook-dir=$PWD --no-browser --ip=\"$_IP\" --port=$PORT"
 echo "Command: jupyter $start_cmd $settings"
 
 if [[ "${keep_log_file+defined}"  ]];then
